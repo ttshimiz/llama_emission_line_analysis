@@ -701,8 +701,8 @@ def from_pkl_to_fits(file, crpix1, crpix2, crval1, crval2, cdelt, object, save_d
         h.header['CD1_2'] = 0.0
         h.header['CD2_1'] = 0.0
         h.header['CD2_2'] = cdelt
-        h.header['CRTYPE1'] = 'RA---TAN'
-        h.header['CRTYPE2'] = 'DEC--TAN'
+        h.header['CTYPE1'] = 'RA---TAN'
+        h.header['CTYPE2'] = 'DEC--TAN'
         h.header['CUNIT1'] = 'DEGREE'
         h.header['CUNIT2'] = 'DEGREE'
         h.header['RADECSYS'] = 'FK5'
