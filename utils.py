@@ -43,7 +43,7 @@ def read_cube(fn, scale=True):
     if cunit3 == 'LOG(MICRON)':
         lam = np.exp(lam)
 
-    return data, lam
+    return data, lam, header
 
 
 def create_rgb_image(rfile, gfile, bfile, scale=1e21, stretch=12, Q=0.1,
