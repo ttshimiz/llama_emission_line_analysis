@@ -611,8 +611,10 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
         hdu_cont_sub.header['CRVAL3'] = np.log(lam[0])
         hdu_resid.header['CRVAL3'] = np.log(lam[0])
 
-    hdu_cont_sub.writeto(savedir + 'continuum_sub' + suffix + '.fits', overwrite=True)
-    hdu_resid.writeto(savedir + 'residuals' + suffix + '.fits', overwrite=True)
+    hdu_cont_sub.writeto(savedir + 'continuum_sub' + suffix + '.fits', overwrite=True,
+                         output_verify='ignore')
+    hdu_resid.writeto(savedir + 'residuals' + suffix + '.fits', overwrite=True,
+                      output_verify='ignore')
 
     # Write out the best parameters for the continuum
     hdu_cont_params = fits.PrimaryHDU(data=results['cont_params'], header=header)
@@ -620,7 +622,8 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
     for k in key_remove:
         hdu_cont_params.header.remove(k)
     #hdu_cont_params.header.remove('BUNIT')
-    fits.HDUList([hdu_cont_params]).writeto(savedir+'cont_params'+suffix+'.fits', overwrite=True)
+    fits.HDUList([hdu_cont_params]).writeto(savedir+'cont_params'+suffix+'.fits', overwrite=True,
+                                            output_verify='ignore')
 
     # Write out the pixels that were fit or skipped
     hdu_skip = fits.PrimaryHDU(data=np.array(results['fit_pixels'], dtype=int), header=header)
@@ -628,14 +631,16 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
     for k in key_remove:
         hdu_skip.header.remove(k)
     #hdu_skip.header.remove('BUNIT')
-    fits.HDUList([hdu_skip]).writeto(savedir+'skippix'+suffix+'.fits', overwrite=True)
+    fits.HDUList([hdu_skip]).writeto(savedir+'skippix'+suffix+'.fits', overwrite=True,
+                                     output_verify='ignore')
 
     # Write out the rms estimate
     hdu_rms = fits.PrimaryHDU(data=np.array(results['rms']), header=header)
     hdu_rms.header['WCSAXES'] = 2
     for k in key_remove:
         hdu_rms.header.remove(k)
-    fits.HDUList([hdu_rms]).writeto(savedir+'rms'+suffix+'.fits', overwrite=True)
+    fits.HDUList([hdu_rms]).writeto(savedir+'rms'+suffix+'.fits', overwrite=True,
+                                    output_verify='ignore')
 
     # For each line fit, write out both the best fit gaussian parameters
     # and physical line parameters
@@ -729,15 +734,19 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
             hdu_vdisp_err.header['BUNIT'] = 'km s-1'
 
         gauss_list = fits.HDUList([hdu_amp, hdu_cent, hdu_sig])
-        gauss_list.writeto(savedir+l+'_gauss_params'+suffix+'.fits', overwrite=True)
+        gauss_list.writeto(savedir+l+'_gauss_params'+suffix+'.fits', overwrite=True,
+                           output_verify='ignore')
         if unc_exist:
             gauss_mc_list = fits.HDUList([hdu_amp_mc, hdu_cent_mc, hdu_sig_mc])
-            gauss_mc_list.writeto(savedir+l+'_gauss_params_mc'+suffix+'.fits', overwrite=True)
+            gauss_mc_list.writeto(savedir+l+'_gauss_params_mc'+suffix+'.fits', overwrite=True,
+                                  output_verify='ignore')
             line_list = fits.HDUList([hdu_flux, hdu_vel, hdu_vdisp, hdu_flux_err, hdu_vel_err, hdu_vdisp_err])
-            line_list.writeto(savedir+l+'_line_params'+suffix+'.fits', overwrite=True)
+            line_list.writeto(savedir+l+'_line_params'+suffix+'.fits', overwrite=True,
+                              output_verify='ignore')
         else:
             line_list = fits.HDUList([hdu_flux, hdu_vel, hdu_vdisp])
-            line_list.writeto(savedir+l+'_line_params'+suffix+'.fits', overwrite=True)
+            line_list.writeto(savedir+l+'_line_params'+suffix+'.fits', overwrite=True,
+                              output_verify='ignore')
 
     return 0
 
