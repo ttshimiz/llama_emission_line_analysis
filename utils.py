@@ -4,6 +4,7 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as c
 import astropy.io.fits as fits
+import astropy.modeling as apy_mod
 from astropy.stats import sigma_clipped_stats
 import aplpy
 from spectral_cube import SpectralCube
@@ -109,3 +110,57 @@ def create_rgb_image(rfile, gfile, bfile, scale=1e21, stretch=12, Q=0.1,
     fig.show_rgb('rgb.png', interpolation='gaussian')
 
     return fig
+
+
+def find_cont_center(cube, lam, lamrange, guess=None, plot=False, header=None):
+    """
+    Function to fit a 2D Gaussian to the image of a user-defined continuum
+    """
+
+    slice = (lam > lamrange[0]) & (lam < lamrange[1])
+    int = np.sum(cube[slice, :, :], axis=0)
+    img = int/np.nanmean(int)
+    xx, yy = np.meshgrid(range(img.shape[1]), range(img.shape[0]))
+
+    if guess is None:
+        guess_x = img.shape[1]/2
+        guess_y = img.shape[0]/2
+    else:
+        guess_x = guess[0]
+        guess_y = guess[1]
+    img_cut = img[guess_y-10:guess_y+10, guess_x-10:guess_x+10]
+    xx_cut = xx[guess_y-10:guess_y+10, guess_x-10:guess_x+10]
+    yy_cut = yy[guess_y-10:guess_y+10, guess_x-10:guess_x+10]
+    gauss_mod = apy_mod.models.Gaussian2D(x_mean=guess_x, y_mean=guess_y,
+                                          x_stddev=3.0, y_stddev=3.0)
+    fitter = apy_mod.fitting.LevMarLSQFitter()
+
+    best_fit = fitter(gauss_mod, xx_cut, yy_cut, img_cut)
+
+    center = [best_fit.x_mean.value, best_fit.y_mean.value]
+
+    if plot:
+
+        hdu = fits.PrimaryHDU(data=int, header=header)
+        fig = aplpy.FITSFigure(hdu)
+        fig.show_colorscale(cmap='cubehelix', stretch='linear')
+        ra, dec = fig.pixel2world(center[0]+1, center[1]+1)
+        fig.show_markers(ra, dec, marker='+', c='k', s=100, lw=1.0)
+        fig.add_colorbar()
+        fig.add_label(0.05, 0.95,
+                     'Continuum = {0:0.3f} - {1:0.3f} micron'.format(lamrange[0], lamrange[1]),
+                     relative=True, color='r', size=14, horizontalalignment='left')
+        fig.add_label(0.05, 0.90,
+                     'Pixel = [{0:0.2f},{1:0.2f}]'.format(center[0], center[1]),
+                     relative=True, color='r', size=14, horizontalalignment='left')
+        fig.add_label(0.05, 0.85,
+                     'RA, DEC = [{0:0.4f},{1:0.4f}]'.format(ra, dec),
+                     relative=True, color='r', size=14, horizontalalignment='left')
+
+        return center, best_fit, fig
+
+    else:
+
+        return center, best_fit
+
+
