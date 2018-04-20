@@ -10,6 +10,7 @@ import aplpy
 from spectral_cube import SpectralCube
 from astropy.wcs import WCS
 import scipy.ndimage as scp_ndi
+import matplotlib.pyplot as plt
 
 
 def read_cube(fn, scale=True):
@@ -244,3 +245,58 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
             data[i, j] = np.nansum(veldata[j, i, tmpn])
 
     return data
+
+
+def measure_1dprofile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
+    """
+    Measure the rotation curve of an emission line along a specific slit
+    :param cube: Data cube where the rotation curve will be measured
+    :param slit_width: Width of the slit which will define the apertures in arcseconds
+    :param slit_angle: Position angle of the slit in degrees East of North
+    :param pxs: Pixelscale
+    :param vx: Velocity axis for the cube
+    :param soff: Offset from center of the slit perpendicular to slit position angle
+    :return: 1D arrays of the position, flux, velocity, and dispersion calculated along the slit
+    """
+
+    # First convert the cube to a PV array
+    pv = calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=soff)
+
+    # Bin the data further into single spectra by summing rows that are width of the slit
+    # This effectively creates a summed spectrum within a rectangular aperture in the original cube.
+    nrows = pv.shape[0]
+    nbins = np.int(np.ceil((nrows * pxs) / slit_width))
+    offset = np.zeros(nbins)
+    flux = np.zeros(nbins)
+    vel = np.zeros(nbins)
+    disp = np.zeros(nbins)
+
+    for i in range(nbins):
+
+        if i == (nbins - 1):
+
+            bin_start = np.int(i * np.round(slit_width / pxs))
+            bin_end = nrows + 1
+
+        else:
+
+            bin_end = np.int((i + 1) * np.round(slit_width / pxs))
+            bin_start = np.int(i * np.round(slit_width / pxs))
+
+        spec = np.nansum(pv[bin_start:bin_end, :], axis=0)
+        mod = apy_mod.models.Gaussian1D(amplitude=np.max(spec), mean=0, stddev=100.)
+        mod.amplitude.bounds = (0, None)
+        mod.stddev.bounds = (0, None)
+        fitter = apy_mod.fitting.LevMarLSQFitter()
+        best_fit = fitter(mod, vx, spec)
+
+        plt.figure()
+        plt.plot(vx, spec)
+        plt.plot(vx, best_fit(vx))
+
+        vel[i] = best_fit.mean.value
+        disp[i] = best_fit.stddev.value
+        flux[i] = best_fit.amplitude.value*np.sqrt(2*np.pi)*disp[i]
+        offset[i] = ((bin_end + bin_start) - (nrows))*pxs/2
+
+    return offset, flux, vel, disp
