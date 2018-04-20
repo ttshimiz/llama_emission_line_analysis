@@ -167,3 +167,50 @@ def find_cont_center(cube, lam, lamrange, guess=None, plot=False, header=None):
         return center, best_fit
 
 
+def fitpa(vel, vel_err=None, xoff=None, yoff=None, mask=None, border=True, debug=False):
+    """
+    Function to fit the kinematic position angle using fit_kinematic_pa from Michele Cappelari
+    """
+    import sys
+    sys.path.append('/Users/ttshimiz/Github/fit_kinematic_pa/')
+    sys.path.append('/Users/ttshimiz/Github/display_pixels/')
+    from fit_kinematic_pa import fit_kinematic_pa
+
+    x, y = np.meshgrid(range(vel.shape[1]), range(vel.shape[0]))
+    x = x - vel.shape[0] / 2
+    y = y - vel.shape[1] / 2
+
+    if vel_err is None:
+        vel_err = vel * 0 + 10.
+
+    if mask is None:
+        mask = np.isnan(vel)
+
+    xx = x.flatten()
+    yy = y.flatten()
+    vel_flat = vel.flatten()
+    vel_err_flat = vel_err.flatten()
+    mask_flat = mask.flatten()
+
+    if border:
+        border_mask = (np.abs(xx) > 10) | (np.abs(yy) > 10)
+        mask_all = (~mask_flat) & (~border_mask)
+    else:
+        mask_all = (~mask_flat)
+
+    if xoff is not None:
+        xx = xx - xoff + vel.shape[0] / 2
+
+    if yoff is not None:
+        yy = yy - yoff + vel.shape[1] / 2
+
+    xx = xx[mask_all]
+    yy = yy[mask_all]
+    vel_flat = vel_flat[mask_all]
+    vel_err_flat = vel_err_flat[mask_all]
+
+    angBest, angErr, vSyst, fig = fit_kinematic_pa(xx, yy, vel_flat, dvel=vel_err_flat, debug=debug)
+
+    return angBest, angErr, vSyst, fig
+
+
