@@ -227,17 +227,16 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
     :return: pv: 2D array with positional offset as rows and velocity as columns
     """
 
-    cube_shape = cube.shape
+    rotate_angle = slit_angle - 180.
+    veldata = scp_ndi.interpolation.rotate(cube, rotate_angle, axes=(2, 1),
+                                           reshape=True)
+    cube_shape = veldata.shape
     psize = cube_shape[1]
     vsize = cube_shape[0]
     lin = np.arange(psize) - np.fix(psize / 2.)
-
-    # The angle that is needed for Scipy's rotation should be north of east
-    rotate_angle = slit_angle - 180.
-    veldata = scp_ndi.interpolation.rotate(cube, rotate_angle, axes=(2, 1),
-                                           reshape=False)
     tmpn = (((lin * pxs) <= (soff + slit_width / 2.)) &
             ((lin * pxs) >= (soff - slit_width / 2.)))
+
     data = np.zeros((psize, vsize))
 
     for i in range(psize):
