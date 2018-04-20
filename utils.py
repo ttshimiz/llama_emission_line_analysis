@@ -247,7 +247,7 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
     return data
 
 
-def measure_1dprofile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
+def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
     """
     Measure the rotation curve of an emission line along a specific slit
     :param cube: Data cube where the rotation curve will be measured
@@ -284,7 +284,14 @@ def measure_1dprofile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
             bin_start = np.int(i * np.round(slit_width / pxs))
 
         spec = np.nansum(pv[bin_start:bin_end, :], axis=0)
-        mod = apy_mod.models.Gaussian1D(amplitude=np.max(spec), mean=0, stddev=100.)
+
+        # Use the first and second moment as a guess of the line parameters
+        mom0 = np.sum(spec)
+        mom1 = np.sum(spec * vx)/mom0
+        mom2 = np.sum(spec * (vx - mom1)**2)/mom0
+
+        mod = apy_mod.models.Gaussian1D(amplitude=mom0/np.sqrt(2*np.pi*np.abs(mom2)), mean=mom1,
+                                        stddev=np.sqrt(np.abs(mom2)))
         mod.amplitude.bounds = (0, None)
         mod.stddev.bounds = (0, None)
         fitter = apy_mod.fitting.LevMarLSQFitter()
