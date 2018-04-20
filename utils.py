@@ -106,6 +106,9 @@ def create_rgb_image(rfile, gfile, bfile, scale=1e21, stretch=12, Q=0.1,
 
     rgb = make_lupton_rgb(image_r, image_g, image_b, filename='rgb.png', Q=Q, stretch=stretch)
 
+    hdu_r[0].header['CTYPE1'] = 'RA---TAN'
+    hdu_r[0].header['CTYPE2'] = 'DEC--TAN'
+
     fig = aplpy.FITSFigure(hdu_r)
     fig.show_rgb('rgb.png', interpolation='gaussian')
 
