@@ -606,6 +606,8 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
     if lam_type == 'linear':
         hdu_cont_sub.header['CRVAL3'] = lam[0]
         hdu_resid.header['CRVAL3'] = lam[0]
+        hdu_cont_sub.header['CRPIX3'] = 1
+        hdu_resid.header['CRPIX3'] = 1
 
     elif lam_type == 'log':
         hdu_cont_sub.header['CRVAL3'] = np.log(lam[0])
