@@ -9,6 +9,7 @@ from astropy.stats import sigma_clipped_stats
 import aplpy
 from spectral_cube import SpectralCube
 from astropy.wcs import WCS
+import scipy.ndimage as scp_ndi
 
 
 def read_cube(fn, scale=True):
@@ -214,3 +215,32 @@ def fitpa(vel, vel_err=None, xoff=None, yoff=None, mask=None, border=True, debug
     return angBest, angErr, vSyst, fig
 
 
+def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
+    """
+    Calculate a PV diagram from a cube
+    :param cube: The data cube
+    :param slit_width: Width of the slit to use in arcseconds
+    :param slit_angle: Angle of the slit east of north in degrees
+    :param pxs: Pixel scale of the cube in arcseconds
+    :param soff: Vertical offset of the slit
+    :return: pv: 2D array with positional offset as rows and velocity as columns
+    """
+
+    cube_shape = cube.shape
+    psize = cube_shape[1]
+    vsize = cube_shape[0]
+    lin = np.arange(psize) - np.fix(psize / 2.)
+
+    # The angle that is needed for Scipy's rotation should be north of east
+    rotate_angle = slit_angle - 180.
+    veldata = scp_ndi.interpolation.rotate(cube, rotate_angle, axes=(2, 1),
+                                           reshape=False)
+    tmpn = (((lin * pxs) <= (soff + slit_width / 2.)) &
+            ((lin * pxs) >= (soff - slit_width / 2.)))
+    data = np.zeros((psize, vsize))
+
+    for i in range(psize):
+        for j in range(vsize):
+            data[i, j] = np.nansum(veldata[j, i, tmpn])
+
+    return data
