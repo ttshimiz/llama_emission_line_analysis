@@ -216,22 +216,28 @@ def fitpa(vel, vel_err=None, xoff=None, yoff=None, mask=None, border=True, debug
     return angBest, angErr, vSyst, fig
 
 
-def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
+def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0., reverse=False):
     """
     Calculate a PV diagram from a cube
     :param cube: The data cube
     :param slit_width: Width of the slit to use in arcseconds
-    :param slit_angle: Angle of the slit east of north in degrees
+    :param slit_angle: Angle of the slit east of north in degrees. Can be between -90 and 90
     :param pxs: Pixel scale of the cube in arcseconds
     :param soff: Vertical offset of the slit
+    :param reverse: True or False whether to flip so that southern portion is on top
     :return: pv: 2D array with positional offset as rows and velocity as columns
     """
 
-    rotate_angle = slit_angle - 180.
-    veldata = scp_ndi.interpolation.rotate(cube, rotate_angle, axes=(2, 1),
+    if reverse:
+        if slit_angle < 0:
+            slit_angle = 180. + slit_angle
+        else:
+            slit_angle = -(180. - slit_angle)
+
+    veldata = scp_ndi.interpolation.rotate(cube, slit_angle, axes=(2, 1),
                                            reshape=True)
     cube_shape = veldata.shape
-    psize = cube_shape[1]
+    psize = cube_shape[2]
     vsize = cube_shape[0]
     lin = np.arange(psize) - np.fix(psize / 2.)
     tmpn = (((lin * pxs) <= (soff + slit_width / 2.)) &
@@ -246,7 +252,7 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0.):
     return data
 
 
-def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
+def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=False):
     """
     Measure the rotation curve of an emission line along a specific slit
     :param cube: Data cube where the rotation curve will be measured
@@ -259,7 +265,7 @@ def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0.):
     """
 
     # First convert the cube to a PV array
-    pv = calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=soff)
+    pv = calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=soff, reverse=reverse)
 
     # Bin the data further into single spectra by summing rows that are width of the slit
     # This effectively creates a summed spectrum within a rectangular aperture in the original cube.
