@@ -397,8 +397,13 @@ def calc_aperture_center(r, pa, xcenter, ycenter):
     :return:
     """
 
-    pa = np.pi*pa/180.
-    xnew = r/np.sqrt(1 + np.tan(-pa)**2) + xcenter
-    ynew = r * np.sqrt(1 - 1/(1+np.tan(-pa)**2)) + ycenter
+    pa = np.pi*(pa + 90.0)/180.
+
+    if pa < (np.pi/2):
+        xnew = r/np.sqrt(1 + np.tan(pa)**2) + xcenter
+    else:
+        xnew = -r / np.sqrt(1 + np.tan(pa) ** 2) + xcenter
+
+    ynew = r * np.sqrt(1 - 1/(1+np.tan(pa)**2)) + ycenter
 
     return xnew, ynew
