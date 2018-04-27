@@ -252,7 +252,8 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0., reverse=False):
     return data
 
 
-def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=False):
+def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=False,
+                       mask=None):
     """
     Measure the rotation curve of an emission line along a specific slit
     :param cube: Data cube where the rotation curve will be measured
@@ -261,6 +262,7 @@ def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=F
     :param pxs: Pixelscale
     :param vx: Velocity axis for the cube
     :param soff: Offset from center of the slit perpendicular to slit position angle
+    :param mask: A mask to exclude pixels from the line fitting
     :return: 1D arrays of the position, flux, velocity, and dispersion calculated along the slit
     """
 
@@ -268,7 +270,8 @@ def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=F
     pv = calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=soff, reverse=reverse)
 
     # Bin the data further into single spectra by summing rows that are width of the slit
-    # This effectively creates a summed spectrum within a rectangular aperture in the original cube.
+    # This effectively creates a summed spectrum within
+    # a rectangular aperture in the original cube.
     nrows = pv.shape[0]
     nbins = np.int(np.ceil((nrows * pxs) / slit_width))
     offset = np.zeros(nbins)
@@ -290,17 +293,24 @@ def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=F
 
         spec = np.nansum(pv[bin_start:bin_end, :], axis=0)
 
+        if mask is not None:
+            spec_fit = spec[mask]
+            vx_fit = vx[mask]
+        else:
+            spec_fit = spec
+            vx_fit = vx
+
         # Use the first and second moment as a guess of the line parameters
-        mom0 = np.sum(spec)
-        mom1 = np.sum(spec * vx)/mom0
-        mom2 = np.sum(spec * (vx - mom1)**2)/mom0
+        mom0 = np.sum(spec_fit)
+        mom1 = np.sum(spec_fit * vx_fit)/mom0
+        mom2 = np.sum(spec_fit * (vx_fit - mom1)**2)/mom0
 
         mod = apy_mod.models.Gaussian1D(amplitude=mom0/np.sqrt(2*np.pi*np.abs(mom2)), mean=mom1,
                                         stddev=np.sqrt(np.abs(mom2)))
         mod.amplitude.bounds = (0, None)
         mod.stddev.bounds = (0, None)
         fitter = apy_mod.fitting.LevMarLSQFitter()
-        best_fit = fitter(mod, vx, spec)
+        best_fit = fitter(mod, vx_fit, spec_fit)
 
         plt.figure()
         plt.plot(vx, spec)
