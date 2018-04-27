@@ -407,3 +407,19 @@ def calc_aperture_center(r, pa, xcenter, ycenter):
     ynew = r * np.sqrt(1 - 1/(1+np.tan(pa)**2)) + ycenter
 
     return xnew, ynew
+
+
+def create_aperture_mask(header, center_coord, dr, coord_type='world'):
+    """
+    Determine the pixels that are within an aperture centered on center_coord with radius dr.
+
+    :param header:
+    :param center_coord:
+    :param dr:
+    :param coord_type:
+    :return:
+    """
+
+    seps, pa = calc_pixel_distance(header, center_coord, coord_type=coord_type)
+
+    return seps <= dr
