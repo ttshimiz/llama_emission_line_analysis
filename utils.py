@@ -5,6 +5,7 @@ import astropy.units as u
 import astropy.constants as c
 import astropy.io.fits as fits
 import astropy.modeling as apy_mod
+import astropy.coordinates as apy_coord
 from astropy.stats import sigma_clipped_stats
 import aplpy
 from spectral_cube import SpectralCube
@@ -252,7 +253,7 @@ def calc_pv_diagram(cube, slit_width, slit_angle, pxs, soff=0., reverse=False):
     return data
 
 
-def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=False,
+def measure_1d_profile_from_pv(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=False,
                        mask=None):
     """
     Measure the rotation curve of an emission line along a specific slit
@@ -322,3 +323,64 @@ def measure_1d_profile(cube, slit_width, slit_angle, pxs, vx, soff=0., reverse=F
         offset[i] = ((bin_end + bin_start) - (nrows))*pxs/2
 
     return offset, flux, vel, disp
+
+
+def calc_pixel_distance(header, center_coord, coord_type='world'):
+    """
+    Function to calculate the distance of each pixel
+    from a specific coordinate or pixel.
+
+    :param header: FITS header object for the image or cube
+    :param center_coord: Central coordinate defining the origin, can be either an (RA, DEC)
+                         or (xpixel, ypixel)
+    :param coord_type: 'world' or 'pixel' for the type of central coordinate given
+    :return: seps: 2D array of angular separation of each pixel from center_coord
+    :return: pa: 2D array of the position angle of each pixel from center_coord
+    """
+
+    # Setup the arrays for the pixel X and Y positions
+    nx = header['NAXIS1']
+    ny = header['NAXIS2']
+    xx, yy = np.meshgrid(range(nx), range(ny))
+
+    # Setup the WCS object, remove the third axis if it exists
+    if header['NAXIS'] == 3:
+        header['NAXIS'] = 2
+        header['WCSAXES'] = 2
+        header.remove('NAXIS3')
+        header.remove('CRPIX3')
+        header.remove('CDELT3')
+        header.remove('CUNIT3')
+        header.remove('CTYPE3')
+        header.remove('CRVAL3')
+
+        try:
+            header.remove('PC3_3')
+        except:
+            pass
+
+    dummy_wcs = WCS(header)
+
+    # Convert the pixel positions to RA and DEC
+    ras, decs = dummy_wcs.all_pix2world(xx, yy, 0)
+    world_coords = apy_coord.SkyCoord(ra=ras*u.deg, dec=decs*u.deg, frame='fk5')
+
+    # If the center position was given in pixel coords, need to convert to WCS
+    if coord_type == 'pixel':
+
+        center_sky_coords = dummy_wcs.all_pix2world([[center_coord[0], center_coord[1]]], 0)
+        center_coord = apy_coord.SkyCoord(center_sky_coords, frame='fk5', unit=u.deg)
+
+    # Calculate the separation
+    seps = center_coord.separation(world_coords).to(u.arcsec)
+
+    # Calculate the position angle using just the pixel position
+    # Need to convert the center position to pixels
+    centerx, centery = dummy_wcs.all_world2pix(center_coord.ra, center_coord.dec, 0)
+
+    dx = xx - centerx
+    dy = yy - centery
+
+    pa = -np.arctan(dx/dy)*180./np.pi
+
+    return seps, pa
