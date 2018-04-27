@@ -384,3 +384,21 @@ def calc_pixel_distance(header, center_coord, coord_type='world'):
     pa = -np.arctan(dx/dy)*180./np.pi
 
     return seps, pa
+
+
+def calc_aperture_center(r, pa, xcenter, ycenter):
+    """
+    Simple function to determine the pixel that is r away from (xcenter, ycenter) along
+    a line with position angle, pa
+    :param r:
+    :param pa:
+    :param xcenter:
+    :param ycenter:
+    :return:
+    """
+
+    pa = np.pi*pa/180.
+    xnew = r/np.sqrt(1 + np.tan(-pa)**2) + xcenter
+    ynew = r * np.sqrt(1 - 1/(1+np.tan(-pa)**2)) + ycenter
+
+    return xnew, ynew
