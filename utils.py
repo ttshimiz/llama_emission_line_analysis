@@ -386,7 +386,7 @@ def calc_pixel_distance(header, center_coord, coord_type='world'):
     return seps, pa
 
 
-def calc_aperture_center(r, pa, xcenter, ycenter):
+def calc_pix_position(r, pa, xcenter, ycenter):
     """
     Simple function to determine the pixel that is r away from (xcenter, ycenter) along
     a line with position angle, pa
@@ -423,3 +423,81 @@ def create_aperture_mask(header, center_coord, dr, coord_type='world'):
     seps, pa = calc_pixel_distance(header, center_coord, coord_type=coord_type)
 
     return seps <= dr
+
+
+def determine_aperture_centers(header, center_coord, pa, dr):
+    """
+    Determine the centers of the apertures that span an image/cube along a line with position
+    angle pa and goes through center_coord. Each aperture has a radius of dr.
+    :param header:
+    :param center_coord:
+    :param pa:
+    :param dr:
+    :return:
+    """
+
+    pa_rad = -np.pi/180. * pa
+    # Get the size of the image/cube
+    nx = header['NAXIS1']
+    ny = header['NAXIS2']
+
+    # Calculate the intersection of the line defined by PA and center_coord with the edges
+    # of the image/cube
+    xcenter = center_coord[0]
+    ycenter = center_coord[1]
+    count = 0
+    edge_points = []
+
+    # Check the x = 0 border
+    y_x0 = -xcenter/np.tan(pa_rad) + ycenter
+    if (y_x0 >= 0) & (y_x0 <= ny):
+        count += 1
+        edge_points.append([0, y_x0])
+
+    # Check the y = 0 border
+    x_y0 = -ycenter*np.tan(pa_rad) + xcenter
+    if (x_y0 >= 0) & (x_y0 <= nx):
+        count += 1
+        edge_points.append([x_y0, 0])
+
+    # Check the x = nx border
+    y_nx = (nx - xcenter)/np.tan(pa_rad) + ycenter
+    if (y_nx >= 0) & (y_nx <= ny):
+        count += 1
+        edge_points.append([nx, y_nx])
+
+    # Check the y = ny border
+    x_ny = (ny - ycenter) * np.tan(pa_rad) + xcenter
+    if (x_ny >= 0) & (x_ny <= nx):
+        count += 1
+        edge_points.append([x_ny, ny])
+
+    # Make sure there are only two intersections
+    if count != 2:
+        raise(ValueError, 'Number of intersections is not 2, something wrong happened!')
+
+    # Calculate the start and end radii for the aperture centers based on the border
+    # intersections. If the intersection is below ycenter the radius is negative
+    r1 = np.sqrt((edge_points[0][0] - xcenter)**2 + (edge_points[0][1] - ycenter)**2)
+    if edge_points[0][1] < ycenter:
+        r1 = -r1
+
+    r2 = np.sqrt((edge_points[1][0] - xcenter) ** 2 + (edge_points[1][1] - ycenter) ** 2)
+    if edge_points[1][1] < ycenter:
+        r2 = -r2
+
+    # Setup the radii for the aperture centers with r = 0 always occurring
+    if r1 > r2:
+        r_neg = np.sort(-np.arange(0, -r2, dr))
+        r_pos = np.arange(0, r1, dr)
+        r_centers = np.concatenate((r_neg, r_pos[1:]))
+
+    else:
+        r_neg = np.sort(-np.arange(0, -r1, dr))
+        r_pos = np.arange(0, r2, dr)
+        r_centers = np.concatenate((r_neg, r_pos[1:]))
+
+    # Get the pixel positions for each radii
+    xaps, yaps = calc_pix_position(r_centers, pa, xcenter, ycenter)
+
+    return xaps, yaps
