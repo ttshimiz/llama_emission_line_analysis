@@ -325,7 +325,68 @@ def measure_1d_profile_from_pv(cube, slit_width, slit_angle, pxs, vx, soff=0., r
     return offset, flux, vel, disp
 
 
-def calc_pixel_distance(header, center_coord, coord_type='world'):
+def measure_1d_profile_apertures(cube, rap, center_pixel, pa, vx, vmask=None):
+    """
+    Measure the 1D rotation curve using equally spaced apertures along a defined axis
+    :param cube:
+    :param rap:
+    :param center_pixel:
+    :param pa:
+    :param vx:
+    :return:
+    """
+
+    ny = cube.shape[1]
+    nx = cube.shape[2]
+
+    # First determine the centers of all the apertures that fit within the cube
+    xaps, yaps, centers = determine_aperture_centers(nx, ny, center_pixel, pa, rap)
+
+    # Setup up the arrays to hold the results
+    naps = len(xaps)
+    flux = np.zeros(naps)
+    vel = np.zeros(naps)
+    disp = np.zeros(naps)
+
+    # For each aperture, sum up the spaxels within the aperture and fit a Gaussian line profile
+    for i in range(naps):
+
+        mask_ap = create_aperture_mask(nx, ny, (xaps[i], yaps[i]), rap)
+        mask_cube = np.tile(mask_ap, (cube.shape[0], 1, 1))
+        spec = np.nansum(np.nansum(cube*mask_cube, axis=1), axis=1)
+
+        if vmask is not None:
+            spec_fit = spec[vmask]
+            vx_fit = vx[vmask]
+        else:
+            spec_fit = spec
+            vx_fit = vx
+
+        # Use the first and second moment as a guess of the line parameters
+        mom0 = np.sum(spec_fit)
+        mom1 = np.sum(spec_fit * vx_fit) / mom0
+        mom2 = np.sum(spec_fit * (vx_fit - mom1) ** 2) / mom0
+
+        mod = apy_mod.models.Gaussian1D(amplitude=mom0 / np.sqrt(2 * np.pi * np.abs(mom2)),
+                                        mean=mom1,
+                                        stddev=np.sqrt(np.abs(mom2)))
+        mod.amplitude.bounds = (0, None)
+        mod.stddev.bounds = (0, None)
+        fitter = apy_mod.fitting.LevMarLSQFitter()
+        best_fit = fitter(mod, vx_fit, spec_fit)
+
+        plt.figure()
+        plt.plot(vx, spec)
+        plt.plot(vx, best_fit(vx))
+
+        vel[i] = best_fit.mean.value
+        disp[i] = best_fit.stddev.value
+        flux[i] = best_fit.amplitude.value * np.sqrt(2 * np.pi) * disp[i]
+
+    return centers, flux, vel, disp
+
+
+def calc_pixel_distance(nx, ny, center_coord):
     """
     Function to calculate the distance of each pixel
     from a specific coordinate or pixel.
@@ -338,48 +399,13 @@ def calc_pixel_distance(header, center_coord, coord_type='world'):
     :return: pa: 2D array of the position angle of each pixel from center_coord
     """
 
-    # Setup the arrays for the pixel X and Y positions
-    nx = header['NAXIS1']
-    ny = header['NAXIS2']
     xx, yy = np.meshgrid(range(nx), range(ny))
 
-    # Setup the WCS object, remove the third axis if it exists
-    if header['NAXIS'] == 3:
-        header['NAXIS'] = 2
-        header['WCSAXES'] = 2
-        header.remove('NAXIS3')
-        header.remove('CRPIX3')
-        header.remove('CDELT3')
-        header.remove('CUNIT3')
-        header.remove('CTYPE3')
-        header.remove('CRVAL3')
-
-        try:
-            header.remove('PC3_3')
-        except:
-            pass
-
-    dummy_wcs = WCS(header)
-
-    # Convert the pixel positions to RA and DEC
-    ras, decs = dummy_wcs.all_pix2world(xx, yy, 0)
-    world_coords = apy_coord.SkyCoord(ra=ras*u.deg, dec=decs*u.deg, frame='fk5')
-
-    # If the center position was given in pixel coords, need to convert to WCS
-    if coord_type == 'pixel':
-
-        center_sky_coords = dummy_wcs.all_pix2world([[center_coord[0], center_coord[1]]], 0)
-        center_coord = apy_coord.SkyCoord(center_sky_coords, frame='fk5', unit=u.deg)
+    dx = xx - center_coord[0]
+    dy = yy - center_coord[1]
 
     # Calculate the separation
-    seps = center_coord.separation(world_coords).to(u.arcsec)
-
-    # Calculate the position angle using just the pixel position
-    # Need to convert the center position to pixels
-    centerx, centery = dummy_wcs.all_world2pix(center_coord.ra, center_coord.dec, 0)
-
-    dx = xx - centerx
-    dy = yy - centery
+    seps = np.sqrt(dx**2 + dy**2)
 
     pa = -np.arctan(dx/dy)*180./np.pi
 
@@ -409,7 +435,7 @@ def calc_pix_position(r, pa, xcenter, ycenter):
     return xnew, ynew
 
 
-def create_aperture_mask(header, center_coord, dr, coord_type='world'):
+def create_aperture_mask(nx, ny, center_coord, dr):
     """
     Determine the pixels that are within an aperture centered on center_coord with radius dr.
 
@@ -420,12 +446,12 @@ def create_aperture_mask(header, center_coord, dr, coord_type='world'):
     :return:
     """
 
-    seps, pa = calc_pixel_distance(header, center_coord, coord_type=coord_type)
+    seps, pa = calc_pixel_distance(nx, ny, center_coord)
 
     return seps <= dr
 
 
-def determine_aperture_centers(header, center_coord, pa, dr):
+def determine_aperture_centers(nx, ny, center_coord, pa, dr):
     """
     Determine the centers of the apertures that span an image/cube along a line with position
     angle pa and goes through center_coord. Each aperture has a radius of dr.
@@ -437,9 +463,6 @@ def determine_aperture_centers(header, center_coord, pa, dr):
     """
 
     pa_rad = -np.pi/180. * pa
-    # Get the size of the image/cube
-    nx = header['NAXIS1']
-    ny = header['NAXIS2']
 
     # Calculate the intersection of the line defined by PA and center_coord with the edges
     # of the image/cube
@@ -500,4 +523,4 @@ def determine_aperture_centers(header, center_coord, pa, dr):
     # Get the pixel positions for each radii
     xaps, yaps = calc_pix_position(r_centers, pa, xcenter, ycenter)
 
-    return xaps, yaps
+    return xaps, yaps, r_centers
