@@ -423,14 +423,14 @@ def calc_pix_position(r, pa, xcenter, ycenter):
     :return:
     """
 
-    pa = np.pi*(pa + 90.0)/180.
+    pa_rad = np.pi/180. * pa
+    #signfac = np.sign(np.cos(pa_rad))
+    #xnew = -r*np.sin(pa_rad)*signfac + xcenter
+    #signfac = np.sign(np.sin(pa_rad))
+    signfac = -1
+    xnew = -r*np.sin(pa_rad)*signfac + xcenter
+    ynew = r*np.cos(pa_rad)*signfac + ycenter
 
-    if pa < (np.pi/2):
-        xnew = r/np.sqrt(1 + np.tan(pa)**2) + xcenter
-    else:
-        xnew = -r / np.sqrt(1 + np.tan(pa) ** 2) + xcenter
-
-    ynew = r * np.sqrt(1 - 1/(1+np.tan(pa)**2)) + ycenter
 
     return xnew, ynew
 

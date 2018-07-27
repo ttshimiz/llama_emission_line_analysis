@@ -59,7 +59,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
     # Gather the specified SSP spectra
     if (ages == 'all') & (metals == 'all'):
 
-        emiles = glob.glob(file_dir + '/emiles_models/*.fits')
+        emiles = glob.glob(file_dir + '/emiles_models/Pa00/*.fits')
 
     elif (ages == 'all') & np.isscalar(metals):
         if metals in metals_avail:
