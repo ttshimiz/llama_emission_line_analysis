@@ -13,7 +13,7 @@ Molecular hydrogen lines from Wolfire & Koenig 1991.
 Atomic lines from Villar-Martin+15 and http://www.pa.uky.edu/~peter/atomic/
 CO absorption lines from http://www.gemini.edu/sciops/instruments/nir/wavecal/colines.dat
 
-
+SiVI and CaVIII from Reconditi & Oliva 1993
 """
 
 import astropy.units as u
@@ -28,9 +28,9 @@ EMISSION_LINES = {'H2 (1-0) S(0)': 2.22329*u.micron,
                   'H2 (2-1) S(2)': 2.154*u.micron,
                   'H2 (3-2) S(2)': 2.286*u.micron,
                   'H2 (3-2) S(3)': 2.201*u.micron,
-                  '[SiVI]': 1.9635*u.micron,
+                  '[SiVI]': 1.9634*u.micron,
                   '[AlIX]': 2.04*u.micron,
-                  '[CaVIII]': 2.3211*u.micron,
+                  '[CaVIII]': 2.322*u.micron,
                   '[SiXI]': 1.932*u.micron,
                   'Bry': 2.16612*u.micron,
                   'HeI': 2.0587*u.micron,

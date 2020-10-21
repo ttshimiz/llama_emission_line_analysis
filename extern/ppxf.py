@@ -2114,7 +2114,7 @@ class ppxf(object):
 
         # This array is used for estimating predictions
         npoly = (self.degree + 1)*nspec  # Number of additive polynomials in fit
-        ncols = npoly + nsky*nspec + self.ntemp
+        ncols = np.int(npoly + nsky*nspec + self.ntemp)
         c = np.zeros((npix*nspec, ncols))
 
         if self.degree >= 0:  # Fill first columns of the Design Matrix

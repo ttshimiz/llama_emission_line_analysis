@@ -45,9 +45,9 @@ def cont_fit_single(x, spectrum, degree=1, errors=None, exclude=None):
 
     # Initialize the main fitter and the fitter that implements outlier removal using
     # sigma clipping. Default is to do 5 iterations removing all 3-sigma outliers
-    fitter = apy_mod.fitting.LevMarLSQFitter()
+    fitter = apy_mod.fitting.LinearLSQFitter()
     or_fitter = apy_mod.fitting.FittingWithOutlierRemoval(fitter, sigma_clip, niter=5, sigma=3.0)
-    filtered_data, cont_fit = or_fitter(cont, x, spectrum)
+    cont_fit, filtered_data = or_fitter(cont, x, spectrum)
 
     return cont_fit
 
@@ -68,7 +68,7 @@ def remove_cont(cube, lam, degree=1, exclude=None):
 
             spec = cube[:, i, j]
 
-            if np.any(~np.isnan(spec)) & (np.sum(spec) != 0):
+            if (not np.any(np.isnan(spec))) & (np.sum(spec) != 0):
 
                 print('Removing continuum for pixel ({0}, {1}).'.format(i, j))
                 cont = cont_fit_single(lam, spec, degree=degree, exclude=exclude)
@@ -384,7 +384,7 @@ def specfit_parallel(x, fx, model, rms, nmc=100, cores=None):
 def specfit_single(x, fx, model):
 
     fitter = apy_mod.fitting.LevMarLSQFitter()
-    modfit = fitter(model, x, fx)
+    modfit = fitter(model, x, fx, maxiter=1000)
 
     return modfit
 
@@ -448,7 +448,7 @@ def cubefit(cube, lam, model, skip=None, exclude=None, line_centers=None,
             else:
                 rms_i = None
 
-            if np.any(~np.isnan(spec)) & ~skip[i, j]:
+            if (not np.any(np.isnan(spec))) & ~skip[i, j]:
 
                 if auto_guess:
 
@@ -649,7 +649,8 @@ def write_files(results, lam, header, savedir='', suffix='', lam_type='linear'):
     lines = results['fit_params'].keys()
 
     # See if an uncertainty estimate was made
-    unc_exist = results.has_key('fit_params_mc')
+    #unc_exist = results.has_key('fit_params_mc')
+    unc_exist = 'fit_params_mc' in results
 
     for l in lines:
 

@@ -12,10 +12,14 @@ import numpy as np
 import astropy.io.fits as fits
 import astropy.constants as c
 import astropy.units as u
+from ppxf import ppxf, ppxf_util
+import matplotlib.pyplot as plt
+
 
 # This library
-from .extern import ppxf, ppxf_util
+#from .extern import ppxf, ppxf_util
 from .lines import EMISSION_LINES
+from .lines import ABSORPTION_LINES
 
 # Common Constants
 ckms = c.c.to(u.km/u.s).value
@@ -59,7 +63,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
     # Gather the specified SSP spectra
     if (ages == 'all') & (metals == 'all'):
 
-        emiles = glob.glob(file_dir + '/emiles_models/Pa00/*.fits')
+        emiles = glob.glob(file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*.fits')
 
     elif (ages == 'all') & np.isscalar(metals):
         if metals in metals_avail:
@@ -69,7 +73,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
             else:
                 mstr = 'p'+str(metals)
 
-            emiles = glob.glob(file_dir + '/emiles_models/*'+mstr+'*.fits')
+            emiles = glob.glob(file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*'+mstr+'*.fits')
 
         else:
             raise ValueError('Specified metallicity not'
@@ -81,7 +85,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
 
             astr = '{0:07.4f}'.format(ages)
             emiles = glob.glob(
-                file_dir + '/emiles_models/*T'+astr+'*.fits')
+                file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*T'+astr+'*.fits')
 
         else:
             raise ValueError('Specified SSP age not'
@@ -99,7 +103,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
                 else:
                     mstr = 'p' + str(metals)
 
-                emiles += glob.glob(file_dir + '/emiles_models/*'+mstr+'*.fits')
+                emiles += glob.glob(file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*'+mstr+'*.fits')
 
             else:
                 raise ValueError('M/H = {0} not in EMILES library'.format(m))
@@ -112,7 +116,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
 
             if a in ages_avail:
                 astr = '{0:07.4f}'.format(a)
-                emiles += glob.glob(file_dir + '/emiles_models/*T' + astr + '*.fits')
+                emiles += glob.glob(file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*T' + astr + '*.fits')
             else:
                 raise ValueError(
                     'SSP Age = {0} not in EMILES library'.format(a))
@@ -129,7 +133,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
             astr = '{0:07.4f}'.format(ages)
 
             emiles = glob.glob(
-                file_dir + '/emiles_models/*Z'+mstr+'*T'+astr+'*.fits')
+                file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*Z'+mstr+'*T'+astr+'*.fits')
 
         else:
             raise ValueError('Check the SSP age and/or metallicity provided!')
@@ -150,7 +154,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
                         mstr = 'p' + str(m)
 
                     emiles += glob.glob(
-                        file_dir + '/emiles_models/*Z' + mstr + '*T' + astr + '*.fits')
+                        file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/*Z' + mstr + '*T' + astr + '*.fits')
 
                 else:
                     raise ValueError(
@@ -175,7 +179,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
                     astr = '{0:07.4f}'.format(a)
                     emiles.append(
                         file_dir +
-                        '/emiles_models/Ech1.30Z' +
+                        '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/Ech1.30Z' +
                         mstr + 'T' + astr +
                         '_iTp0.00_baseFe.fits')
 
@@ -209,7 +213,7 @@ def create_emiles_templates(lam_range, fwhm_gal, velscale, ages, metals):
                     raise ValueError(
                         'M/H = {0} not in EMILES library'.format(m))
 
-                emiles.append(file_dir + '/emiles_models/Ech1.30Z' + mstr + 'T' + astr +
+                emiles.append(file_dir + '/emiles_models/Pa00/EMILES_PADOVA00_BASE_CH_FITS/Ech1.30Z' + mstr + 'T' + astr +
                               '_iTp0.00_baseFe.fits')
 
     print('Using {0} stellar templates.'.format(len(emiles)))
@@ -289,8 +293,11 @@ def create_goodpixels(loglam, lam_range_temp, z=0, dv=800.,
     mol_lams = np.array([EMISSION_LINES['H2 (1-0) S(1)'].value,
                          EMISSION_LINES['H2 (1-0) S(0)'].value,
                          EMISSION_LINES['H2 (1-0) S(2)'].value,
-                         EMISSION_LINES['H2 (1-0) S(3)'].value])
-    mol_names = ['H2 (1-0) S(1)', 'H2 (1-0) S(0)', 'H2 (1-0) S(2)', 'H2 (1-0) S(3)']
+                         EMISSION_LINES['H2 (1-0) S(3)'].value,
+                         EMISSION_LINES['H2 (2-1) S(1)'].value,
+                         EMISSION_LINES['H2 (2-1) S(0)'].value])
+    mol_names = ['H2 (1-0) S(1)', 'H2 (1-0) S(0)', 'H2 (1-0) S(2)', 'H2 (1-0) S(3)', 'H2 (2-1) S(1)',
+                 'H2 (2-1) S(0)']
 
     # Prominent Stellar lines that sometimes weren't corrected for in telluric subtraction
     stellar_lams = np.array([EMISSION_LINES['Br13'].value,
@@ -400,7 +407,8 @@ def setup_fit(loglam_gal, loglam_temp, z=0, dv_mask=800., velscale_ratio=1,
 
 def fit_single_spectrum(lam_gal, flux_gal, templates, velscale, start,
                         velscale_ratio=1, noise=None, goodpixels=None, dv=0,
-                        add_poly_deg=4, smooth=False, smooth_sigma_pix=None):
+                        add_poly_deg=4, smooth=False, smooth_sigma_pix=None,
+                        clean=False, plot=False):
     """
     Fit a single spectrum with PPXF
     :param lam_gal:
@@ -454,7 +462,8 @@ def fit_single_spectrum(lam_gal, flux_gal, templates, velscale, start,
         # Run ppxf
         pp = ppxf.ppxf(templates, flux_rebin_gal, noise, velscale, start, plot=False, moments=2,
                        degree=add_poly_deg, vsyst=dv, goodpixels=goodpixels,
-                       velscale_ratio=velscale_ratio)
+                       velscale_ratio=velscale_ratio, clean=clean)
+
 
         vel = pp.sol[0]
         disp = pp.sol[1]
@@ -466,7 +475,16 @@ def fit_single_spectrum(lam_gal, flux_gal, templates, velscale, start,
         apoly = pp.apoly
         residual = pp.galaxy - pp.bestfit
 
-        return vel, disp, chi2, temp_weights, gal, bestfit, stellar, apoly, residual, norm
+        if plot:
+
+            pp.plot()
+            fig = plt.gcf()
+
+            return vel, disp, chi2, temp_weights, gal, bestfit, stellar, apoly, residual, norm, fig
+
+        else:
+
+            return vel, disp, chi2, temp_weights, gal, bestfit, stellar, apoly, residual, norm
 
     else:
 
@@ -481,28 +499,36 @@ def fit_cube(cube, lam_gal, fwhm_gal, z=0, velscale=None, noise_cube=None, velsc
              add_poly_deg=4, smooth=False, parallel=False, ncores=None):
     """
     Fit an entire IFU cube
-    :param cube:
-    :param lam_gal:
-    :param fwhm_gal:
-    :param z:
-    :param velscale:
-    :param noise_cube:
-    :param velscale_ratio:
-    :param ages:
-    :param metals:
-    :param lam_range_min_temp:
-    :param lam_range_max_temp:
-    :param dv_mask:
-    :param mask_h2_lines:
-    :param mask_ionized_lines:
-    :param mask_broad_bry:
-    :param mask_stellar_bry:
-    :param velocity_guess
-    :param dispersion_guess:
-    :param add_poly_deg:
-    :param parallel:
-    :param ncores:
-    :return:
+    :param cube: data cube to be fit
+    :param lam_gal: wavelength array of the data cube
+    :param fwhm_gal: instrumental resolution of the data in km/s
+    :param z: redshift of the data
+    :param velscale: optional, velocity scale to rebin to
+    :param noise_cube: optional, error cube
+    :param velscale_ratio: optional, velocity scale ratio to determine the velocity scale to rebin the templates
+    :param ages: optional, which stellar age templates to use. Default is 'all'
+    :param metals: optional, which metallicity templates to use. Default is 'all'
+    :param lam_range_min_temp: optional, minimum wavelength of the template spectra. Default is 1.4 micron.
+    :param lam_range_max_temp: optional, maximum wavelength of the template spectra. Default is 2.5 micron.
+    :param dv_mask: optional, Width of mask to apply to emission lines in km/s. Default is 800 km/s.
+    :param mask_h2_lines: optional, Whether to mask all H2 emission lines. Default is True.
+    :param mask_ionized_lines: optional, Whether to mask all ionized gas lines. Default is True.
+    :param mask_telluric: optional, Whether to mask regions with strong telluric residuals. Default is False.
+    :param mask_broad_bry: optional, Whether to mask a broad Bry component. Default is False.
+    :param mask_stellar_bry: optional, Whether to mask Bry feature from telluric star. Default is False.
+    :param mask_hband_bry: optional, Whether to mask H-band Bry emission lines. Default is False.
+    :param velocity_guess: optional, Initial guess for the stellar velocity. Default is 0 km/s.
+    :param dispersion_guess: optional, Initial guess for the stellar velocity dispersion. Default is 100 km/s.
+    :param add_poly_deg: optional, Degree of additive polynomial. Default is 4.
+    :param smooth: optional, Whether to smooth the data cube to the template resolution before fitting. Default is False.
+    :param parallel: optional, Whether to use parallel processing. Default is False.
+    :param ncores: optional, If using parallel processing, how many CPUS to use. Default is None.
+    :return: result: Very large list of the fitting results of each spaxel
+             waves: The rebinned wavelength array
+
+    Notes
+    -----
+    Use construct_fit_products(result, cube.shape) to reconstruct the fit products into maps and cubes.
     """
 
     # Grab a single spectrum from the cube to setup the wavelength scale
